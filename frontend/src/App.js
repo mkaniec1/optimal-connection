@@ -1,32 +1,50 @@
-import React from 'react';
+import React, {useState, useEffect} from 'react';
 import PolandMap from './PolandMap';
 import CityLine from './CityLine';
 
 function App() {
-  const cityCoordinates = {
-    Warsaw: [52.2297, 21.0122],
-    Krakow: [50.0647, 19.9450],
-    Gdansk: [54.3520, 18.6466],
-  };
+  const backend_address = 'http://localhost:8000';
+  const [cities, setCities] = useState({});
+  const [connections, setConnections] = useState([]);
 
-  const lines = [
-    { from: 'Warsaw', to: 'Krakow' },
-    { from: 'Warsaw', to: 'Gdansk' },
-  ];
+  useEffect(() => {
+    const fetchConnectionsData = async () => {
+      try {
+        const response = await fetch(backend_address + '/api/connections');
+        const data = await response.json();
+        const cityData = {}
+        data.cities.forEach(city => {
+          cityData[city[0]] = [city[1], city[2]]
+        });
+        setCities(cityData);
+        setConnections(
+          data.connections.map(conn => ({
+            id: conn[0],
+            starting_node_id: conn[1],
+            ending_node_id: conn[2],
+            total_capacity: conn[3],
+            provisioned_capacity: conn[4]
+          })));
+      } catch (error) {
+        console.error('Error fetching city coordinates', error);
+      }
+    };
+    fetchConnectionsData();
+  }, []); // use only once
 
-  const handleLineClick = (line) => {
-    alert(`Clicked line from ${line.from} to ${line.to}`);
+  const handleLineClick = (conn) => {
+    alert(`Conn busy in ${conn.provisioned_capacity}%`);
   };
 
   return (
     <div style={{ textAlign: 'center', padding: '20px' }}>
       <h1>Map of Poland</h1>
       <PolandMap>
-        {lines.map((line, index) => (
+        {connections.map((conn) => (
           <CityLine
-            key={index}
-            positions={[cityCoordinates[line.from], cityCoordinates[line.to]]}
-            onClick={() => handleLineClick(line)}
+            key={conn.id}
+            positions={[cities[conn.starting_node_id], cities[conn.ending_node_id]]}
+            onClick={() => handleLineClick(conn)}
           />
         ))}
       </PolandMap>
