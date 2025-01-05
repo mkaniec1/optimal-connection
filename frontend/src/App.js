@@ -1,16 +1,23 @@
 import React, {useState, useEffect} from 'react';
 import PolandMap from './PolandMap';
 import CityLine from './CityLine';
+import CityMarker from './CityMarker';
+import ReserveSpaceButton from './ReserveSpaceButton';
 
 function App() {
   const backend_address = 'http://localhost:8000';
   const [cities, setCities] = useState({});
   const [connections, setConnections] = useState([]);
+  const [startEndPath, setStartEndPath] = useState([undefined, undefined]);
+  const [pathToModify, setPathToModify] = useState(0);
 
   useEffect(() => {
     const fetchConnectionsData = async () => {
       try {
-        const response = await fetch(backend_address + '/api/connections');
+        const response = await fetch(backend_address + '/api/connections', {
+          method: 'GET',
+          credentials: 'include',
+        });
         const data = await response.json();
         const cityData = {}
         data.cities.forEach(city => {
@@ -36,6 +43,41 @@ function App() {
     alert(`Conn busy in ${conn.provisioned_capacity}%`);
   };
 
+  const handleCityClick = (id) => {
+    setStartEndPath((prevPath) => {
+      const updatedPath = [...prevPath];
+      updatedPath[pathToModify] = id;
+      return updatedPath;
+    });
+    setPathToModify(pathToModify === 0 ? 1 : 0);
+  };
+
+  const handleReserveSpaceClick = async () => {
+    const csrfToken = getCookie('csrftoken');
+    try {
+      const response = await fetch(backend_address + '/api/reserve', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRFToken': csrfToken,
+        },
+        body: JSON.stringify({
+          startNode: startEndPath[0],
+          endNode: startEndPath[1],
+        }),
+      });
+      if (response.ok) {
+        const data = await response.json();
+        // TODO process data
+      } else {
+        console.warn('Invalid resonse from server');
+      }
+    } catch (error) {
+      console.error('Error requesting for reservation: ', error);
+    }
+  };
+
   return (
     <div style={{ textAlign: 'center', padding: '20px' }}>
       <h1>Map of Poland</h1>
@@ -47,9 +89,30 @@ function App() {
             onClick={() => handleLineClick(conn)}
           />
         ))}
+        {Object.entries(cities).map(([id, coords]) => (
+          <CityMarker
+            key={id}
+            position={coords}
+            id={id}
+            path={startEndPath}
+            onClick={() => handleCityClick(id)}
+          />
+        ))}
       </PolandMap>
+      <span>From {startEndPath[0]} to {startEndPath[1]}</span>
+      <ReserveSpaceButton
+        onClick={() => handleReserveSpaceClick()}
+      />
     </div>
   );
+}
+
+function getCookie(name) {
+  const cookieValue = document.cookie
+    .split('; ')
+    .find((row) => row.startsWith(name + '='))
+    ?.split('=')[1];
+  return cookieValue || '';
 }
 
 export default App;

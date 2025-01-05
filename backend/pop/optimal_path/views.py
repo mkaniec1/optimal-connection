@@ -1,7 +1,9 @@
+from django.views.decorators.csrf import ensure_csrf_cookie
 from django.http import JsonResponse
 from . import models
+import json
 
-
+@ensure_csrf_cookie
 def api_connections(request):
     cities = models.Node.objects.all()
     context_cities = [
@@ -24,3 +26,16 @@ def api_connections(request):
     return JsonResponse(
         context
     )
+
+
+def api_reserve(request):
+    if request.method == 'POST':
+        data = json.loads(request.body)
+        start_node = data.get('startNode')
+        end_node = data.get('endNode')
+
+        print(start_node)
+        print(end_node)
+        return JsonResponse(
+            {'ok': 'ok'}
+        )

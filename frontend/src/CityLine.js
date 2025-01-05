@@ -5,7 +5,7 @@ function CityLine({ positions, onClick }) {
     <Polyline
       positions={positions}
       color="blue"
-      weight={8}
+      weight={2}
       eventHandlers={{
         click: onClick,
       }}
