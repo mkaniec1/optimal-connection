@@ -1,11 +1,18 @@
 import { Polyline } from 'react-leaflet';
 
-function CityLine({ positions, onClick }) {
+function CityLine({ positions, onClick, highlight, x }) {
+  console.log(x, highlight);
+  let color = "blue";
+  let weight = 2;
+  if (highlight){
+    color = "red";
+    weight = "10";
+  }
   return (
     <Polyline
       positions={positions}
-      color="blue"
-      weight={2}
+      color={color}
+      weight={weight}
       eventHandlers={{
         click: onClick,
       }}

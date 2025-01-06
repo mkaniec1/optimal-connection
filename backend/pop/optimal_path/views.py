@@ -1,6 +1,6 @@
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.http import JsonResponse
-from . import models
+from . import models, a_star
 import json
 
 @ensure_csrf_cookie
@@ -33,9 +33,7 @@ def api_reserve(request):
         data = json.loads(request.body)
         start_node = data.get('startNode')
         end_node = data.get('endNode')
-
-        print(start_node)
-        print(end_node)
+        best_route = a_star.find_best(start_node, end_node)
         return JsonResponse(
-            {'ok': 'ok'}
+            {'bestRoute': best_route},
         )

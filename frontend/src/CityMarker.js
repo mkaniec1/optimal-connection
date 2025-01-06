@@ -3,9 +3,9 @@ import L from 'leaflet';
 
 const CityMarker = ({ position, id, path, onClick }) => {
   let color = 'blue';
-  if(id == path[0]){
+  if(id === path[0]){
     color = 'green';
-  } else if (id == path[1]){
+  } else if (id === path[1]){
     color = 'red';
   }
   const cityIcon = L.divIcon({

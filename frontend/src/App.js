@@ -1,8 +1,9 @@
-import React, {useState, useEffect} from 'react';
-import PolandMap from './PolandMap';
+import React, { useState, useEffect, useRef } from 'react';
 import CityLine from './CityLine';
 import CityMarker from './CityMarker';
 import ReserveSpaceButton from './ReserveSpaceButton';
+import { MapContainer, TileLayer } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 
 function App() {
   const backend_address = 'http://localhost:8000';
@@ -10,6 +11,9 @@ function App() {
   const [connections, setConnections] = useState([]);
   const [startEndPath, setStartEndPath] = useState([undefined, undefined]);
   const [pathToModify, setPathToModify] = useState(0);
+  const [bestRoute, setBestRoute] = useState([]);
+  const [map, setMap] = useState(null);
+  const mapRef = useRef();
 
   useEffect(() => {
     const fetchConnectionsData = async () => {
@@ -19,11 +23,14 @@ function App() {
           credentials: 'include',
         });
         const data = await response.json();
-        const cityData = {}
+        const cityData = {};
         data.cities.forEach(city => {
-          cityData[city[0]] = [city[1], city[2]]
+          cityData[city[0]] = [city[1], city[2]];
         });
         setCities(cityData);
+        data.connections.map(conn =>
+          console.log(conn[0])
+        );
         setConnections(
           data.connections.map(conn => ({
             id: conn[0],
@@ -31,13 +38,15 @@ function App() {
             ending_node_id: conn[2],
             total_capacity: conn[3],
             provisioned_capacity: conn[4]
-          })));
+          }))
+        );
+
       } catch (error) {
         console.error('Error fetching city coordinates', error);
       }
     };
     fetchConnectionsData();
-  }, []); // use only once
+  }, []);
 
   const handleLineClick = (conn) => {
     alert(`Conn busy in ${conn.provisioned_capacity}%`);
@@ -67,26 +76,36 @@ function App() {
           endNode: startEndPath[1],
         }),
       });
+
       if (response.ok) {
         const data = await response.json();
-        // TODO process data
+        setBestRoute(data.bestRoute);
       } else {
-        console.warn('Invalid resonse from server');
+        console.warn('Invalid response from server');
       }
     } catch (error) {
-      console.error('Error requesting for reservation: ', error);
+      console.error('Error requesting reservation: ', error);
     }
   };
 
   return (
     <div style={{ textAlign: 'center', padding: '20px' }}>
       <h1>Map of Poland</h1>
-      <PolandMap>
-        {connections.map((conn) => (
+      <MapContainer
+        center={[52.0, 15.5]}
+        zoom={7}
+        style={{ height: '750px', width: '70%' }}
+        whenReady={setMap}
+        ref={mapRef}
+      >
+        <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+        {connections.map((conn, index) => (
           <CityLine
-            key={conn.id}
+            key={`${conn.id}-${bestRoute.includes(conn.id)}`}
             positions={[cities[conn.starting_node_id], cities[conn.ending_node_id]]}
             onClick={() => handleLineClick(conn)}
+            highlight={bestRoute.includes(conn.id)}
+            x={index}
           />
         ))}
         {Object.entries(cities).map(([id, coords]) => (
@@ -98,11 +117,11 @@ function App() {
             onClick={() => handleCityClick(id)}
           />
         ))}
-      </PolandMap>
-      <span>From {startEndPath[0]} to {startEndPath[1]}</span>
-      <ReserveSpaceButton
-        onClick={() => handleReserveSpaceClick()}
-      />
+      </MapContainer>
+      <div style={{ marginTop: '20px' }}>
+        <span>From {startEndPath[0]} to {startEndPath[1]}</span>
+        <ReserveSpaceButton onClick={handleReserveSpaceClick} />
+      </div>
     </div>
   );
 }
