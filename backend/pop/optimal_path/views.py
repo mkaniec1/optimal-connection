@@ -33,7 +33,20 @@ def api_reserve(request):
         data = json.loads(request.body)
         start_node = data.get('startNode')
         end_node = data.get('endNode')
-        best_route = a_star.find_best(start_node, end_node)
+        space = float(data.get('space'))
+        best_routes, times_allocated = a_star.find_best(start_node, end_node, space)
+        if not best_routes:
+            return JsonResponse(
+                {'error': f"Maximum number of allocations is {times_allocated}, which is {times_allocated*12.5} GHz."},
+                status=400
+            )
+        unique_best_routes = set(best_routes)
+        message = []
+        for route in unique_best_routes:
+            message.append({
+                'route': route,
+                'count': best_routes.count(route)
+            })
         return JsonResponse(
-            {'bestRoute': best_route},
+            {'bestRoutes': message},
         )

@@ -2,7 +2,7 @@ from .models import Node, Connection
 from geopy import distance
 
 
-def find_best(start_node_id: int, end_node_id: int):
+def find_best(start_node_id: int, end_node_id: int, space: float) -> list[tuple]:
     start_node: Node = Node.objects.get(id=start_node_id)
     end_node: Node = Node.objects.get(id=end_node_id)
     # for heuristic function
@@ -30,42 +30,57 @@ def find_best(start_node_id: int, end_node_id: int):
             ending_node=conn.starting_node)[0].id
         for conn in Connection.objects.all()
         }
-    USED_CAPACITY = {
+    used_capacity = {
         conn.id: float(conn.provisioned_capacity)
         for conn in Connection.objects.all()
     }
+    paths_to_reserve = []
+    space_allocation_counter = 0
+    while space > 0:
+        queue = {
+            (conn.id,): calculate_q((conn.id,), DIST_TO_END, LENGTHS, used_capacity)
+            for conn in Connection.objects.filter(starting_node=start_node)
+        }
+        while True:
+            if not queue:
+                return None, space_allocation_counter
+            path_to_expand = min(queue, key=queue.get)
+            if queue[path_to_expand] == float('inf'):
+                print(not queue)
+                print(queue[path_to_expand] == float('inf'))
+                print(queue[path_to_expand])
+                return None, space_allocation_counter
 
-    queue = {
-        (conn.id,): calculate_q((conn.id,), DIST_TO_END, LENGTHS, USED_CAPACITY)
-        for conn in Connection.objects.filter(starting_node=start_node)
-    }
-    i = 0
-    while True:
-        path_to_expand = min(queue, key=queue.get)
-        print(i, ": ", end="\n")
-        for path, length in queue.items():
-            print(path)
-            print(length)
-        print("============")
-        i += 1
-        if path_to_expand[-1] in FINAL_PATHS:
-            return path_to_expand
-        del queue[path_to_expand]
-        new_conns = [conn.id for conn in
-                     Connection.objects.filter(
-                         starting_node=Connection.objects.get(
-                             id=path_to_expand[-1]).ending_node)]
-        for new_conn in new_conns:
-            if new_conn not in path_to_expand and new_conn != ANTI_PATHS[path_to_expand[-1]]:
-                new_path = (*path_to_expand, new_conn)
-                queue[new_path] = calculate_q(new_path, DIST_TO_END, LENGTHS, USED_CAPACITY)
+            if path_to_expand[-1] in FINAL_PATHS:
+                paths_to_reserve.append(path_to_expand)
+                space -= 12.5
+                space_allocation_counter += 1
+                for path in path_to_expand:
+                    used_capacity[path] += 1.25  # 12.5 GHz is the smallest space to reserve (equals 1.25% of total connection capacity)
+                break
+
+            del queue[path_to_expand]
+            new_conns = [conn.id for conn in
+                        Connection.objects.filter(
+                            starting_node=Connection.objects.get(
+                                id=path_to_expand[-1]).ending_node)]
+            for new_conn in new_conns:
+                if new_conn not in path_to_expand and ANTI_PATHS[new_conn] not in path_to_expand:
+                    new_path = (*path_to_expand, new_conn)
+                    queue[new_path] = calculate_q(new_path, DIST_TO_END, LENGTHS, used_capacity)
+                    if queue[new_path] == float('inf'):
+                        del queue[new_path]
+    return paths_to_reserve, space_allocation_counter
 
 
 def calculate_q(conns: tuple[int], dist_to_end, lengths, used):
-    used_strength = 3
+    used_strength = 5
     value = 0
     conn_ids = list(conns)
     for conn_id in conn_ids:
+        if used[conn_id] >= 100:
+            value = float('inf')
+            return value
         value += lengths[conn_id] + used[conn_id] * used_strength
     value += dist_to_end[Connection.objects.get(id=conn_ids[-1]).ending_node.id]
     return value

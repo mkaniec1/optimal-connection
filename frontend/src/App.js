@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import CityLine from './CityLine';
 import CityMarker from './CityMarker';
+import RouteSelector from './RouteSelector';
 import ReserveSpaceButton from './ReserveSpaceButton';
 import { MapContainer, TileLayer } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -13,7 +14,10 @@ function App() {
   const [pathToModify, setPathToModify] = useState(0);
   const [bestRoute, setBestRoute] = useState([]);
   const [map, setMap] = useState(null);
+  const [uniqueRoutes, setUniqueRoutes] = useState([]);
   const mapRef = useRef();
+  const inputGHzRef = useRef();
+
 
   useEffect(() => {
     const fetchConnectionsData = async () => {
@@ -28,9 +32,6 @@ function App() {
           cityData[city[0]] = [city[1], city[2]];
         });
         setCities(cityData);
-        data.connections.map(conn =>
-          console.log(conn[0])
-        );
         setConnections(
           data.connections.map(conn => ({
             id: conn[0],
@@ -62,6 +63,10 @@ function App() {
   };
 
   const handleReserveSpaceClick = async () => {
+    if (startEndPath[0] === startEndPath[1] || !startEndPath[0] || !startEndPath[1]){
+      alert('invalid cities!');
+      return
+    }
     const csrfToken = getCookie('csrftoken');
     try {
       const response = await fetch(backend_address + '/api/reserve', {
@@ -74,13 +79,18 @@ function App() {
         body: JSON.stringify({
           startNode: startEndPath[0],
           endNode: startEndPath[1],
+          space: inputGHzRef.current.value,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setBestRoute(data.bestRoute);
+        console.log(data);
+        setBestRoute(data.bestRoutes[0].route);
+        setUniqueRoutes(data.bestRoutes);
       } else {
+        const data = await response.json();
+        alert(data.error);
         console.warn('Invalid response from server');
       }
     } catch (error) {
@@ -89,12 +99,11 @@ function App() {
   };
 
   return (
-    <div style={{ textAlign: 'center', padding: '20px' }}>
-      <h1>Map of Poland</h1>
+    <div style={{ textAlign: 'center', padding: '20px', display: 'flex', flexDirection: 'row' }}>
       <MapContainer
         center={[52.0, 15.5]}
         zoom={7}
-        style={{ height: '750px', width: '70%' }}
+        style={{ height: '850px', width: '70%' }}
         whenReady={setMap}
         ref={mapRef}
       >
@@ -118,9 +127,22 @@ function App() {
           />
         ))}
       </MapContainer>
-      <div style={{ marginTop: '20px' }}>
-        <span>From {startEndPath[0]} to {startEndPath[1]}</span>
-        <ReserveSpaceButton onClick={handleReserveSpaceClick} />
+      <div style={{width: '25%'}}>
+        <div style={{ textAlign: 'center' }}>
+          <p>From <span style={{color:'green'}}>{startEndPath[0] ? startEndPath[0] : '.......'}</span>
+            &nbsp; to <span style={{color:'red'}}>{startEndPath[1] ? startEndPath[1] : '.......'}</span></p>
+          <p>GHz:  <input ref={inputGHzRef} type='number' style={{width: '50px'}}></input></p>
+          <ReserveSpaceButton onClick={handleReserveSpaceClick} />
+        </div>
+        {uniqueRoutes.map((uniqueRoute, index) => (
+          <RouteSelector
+           key={index}
+           route={uniqueRoute.route}
+           count={uniqueRoute.count}
+           onClick={() => setBestRoute(uniqueRoute.route)}
+           highlight={uniqueRoute.route === bestRoute}
+          />
+        ))}
       </div>
     </div>
   );
