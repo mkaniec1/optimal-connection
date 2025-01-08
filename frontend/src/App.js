@@ -3,6 +3,7 @@ import CityLine from './CityLine';
 import CityMarker from './CityMarker';
 import RouteSelector from './RouteSelector';
 import ReserveSpaceButton from './ReserveSpaceButton';
+import ConnInfo from './ConnInfo';
 import { MapContainer, TileLayer } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -11,10 +12,12 @@ function App() {
   const [cities, setCities] = useState({});
   const [connections, setConnections] = useState([]);
   const [startEndPath, setStartEndPath] = useState([undefined, undefined]);
+  const [orangePurpleCities, setOrangePurpleCities] = useState([undefined, undefined]);
   const [pathToModify, setPathToModify] = useState(0);
   const [bestRoute, setBestRoute] = useState([]);
   const [map, setMap] = useState(null);
   const [uniqueRoutes, setUniqueRoutes] = useState([]);
+  const [connInfoData, setConnInfoData] = useState({});
   const mapRef = useRef();
   const inputGHzRef = useRef();
 
@@ -41,7 +44,6 @@ function App() {
             provisioned_capacity: conn[4]
           }))
         );
-
       } catch (error) {
         console.error('Error fetching city coordinates', error);
       }
@@ -49,8 +51,43 @@ function App() {
     fetchConnectionsData();
   }, []);
 
-  const handleLineClick = (conn) => {
-    alert(`Conn busy in ${conn.provisioned_capacity}%`);
+  const handleLineClick = async (conn) => {
+    if (conn.id === connInfoData.firstConn || conn.id === connInfoData.secondConn){
+      setOrangePurpleCities([undefined, undefined]);
+      setConnInfoData({});
+      return;
+    }
+    try {
+      const response = await fetch(backend_address + '/api/get_channels/' + conn.id , {
+        method: 'GET',
+        credentials: 'include'
+      });
+
+      if (response.ok){
+        const data = await response.json();
+        setOrangePurpleCities([String(data.orange), String(data.purple)]);
+        const newConnInfo = {
+          capacity: parseFloat(data.capacity),
+          firstConn: data.firstConn,
+          secondConn: data.secondConn,
+          channels: data.channels,
+        };
+        for (const uniqueRoute of uniqueRoutes){
+          for (const route of uniqueRoute.route){
+            if (route === data.firstConn || route === data.secondConn){
+              newConnInfo.channels["12.5"] += uniqueRoute.count;
+              const capacityIncrease = uniqueRoute.count * 12.5 / 4800 * 100;
+              newConnInfo.capacity = (newConnInfo.capacity + capacityIncrease).toFixed(2);
+            }
+          }
+        }
+        setConnInfoData(newConnInfo);
+      } else {
+        console.warn('Invalid response from server');
+      }
+    } catch (error) {
+      console.error('Error requesting for connection data: ', error);
+    }
   };
 
   const handleCityClick = (id) => {
@@ -85,7 +122,6 @@ function App() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log(data);
         setBestRoute(data.bestRoutes[0].route);
         setUniqueRoutes(data.bestRoutes);
       } else {
@@ -110,11 +146,13 @@ function App() {
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         {connections.map((conn, index) => (
           <CityLine
-            key={`${conn.id}-${bestRoute.includes(conn.id)}`}
+            key={`${conn.id}-${bestRoute.includes(conn.id)}-${[connInfoData.firstConn, connInfoData.secondConn].includes(conn.id)}`}
             positions={[cities[conn.starting_node_id], cities[conn.ending_node_id]]}
             onClick={() => handleLineClick(conn)}
             highlight={bestRoute.includes(conn.id)}
-            x={index}
+            displayingInfo={
+              [connInfoData.firstConn, connInfoData.secondConn].includes(conn.id)
+            }
           />
         ))}
         {Object.entries(cities).map(([id, coords]) => (
@@ -123,7 +161,9 @@ function App() {
             position={coords}
             id={id}
             path={startEndPath}
+            orangePurple={orangePurpleCities}
             onClick={() => handleCityClick(id)}
+
           />
         ))}
       </MapContainer>
@@ -134,15 +174,24 @@ function App() {
           <p>GHz:  <input ref={inputGHzRef} type='number' style={{width: '50px'}}></input></p>
           <ReserveSpaceButton onClick={handleReserveSpaceClick} />
         </div>
-        {uniqueRoutes.map((uniqueRoute, index) => (
-          <RouteSelector
-           key={index}
-           route={uniqueRoute.route}
-           count={uniqueRoute.count}
-           onClick={() => setBestRoute(uniqueRoute.route)}
-           highlight={uniqueRoute.route === bestRoute}
-          />
-        ))}
+        <div style={{maxHeight:'500px', overflow:'auto'}}>
+          {uniqueRoutes.map((uniqueRoute, index) => (
+            <RouteSelector
+            key={index}
+            route={uniqueRoute.route}
+            count={uniqueRoute.count}
+            onClick={() => setBestRoute(uniqueRoute.route)}
+            highlight={uniqueRoute.route === bestRoute}
+            />
+          ))}
+        </div>
+        <ConnInfo
+        key={connInfoData.firstConn}
+        capacityPercent={connInfoData.capacity}
+        orangePurpleId={connInfoData.firstConn}
+        purpleOrangeId={connInfoData.secondConn}
+        channels={connInfoData.channels}
+        />
       </div>
     </div>
   );

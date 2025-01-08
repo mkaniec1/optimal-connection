@@ -11,7 +11,7 @@ def api_connections(request):
     ]
     connections = models.Connection.objects.all()
     context_connections = [
-        (conn.id,
+        (str(conn.id),
          conn.starting_node.id,
          conn.ending_node.id,
          conn.total_capacity,
@@ -22,6 +22,7 @@ def api_connections(request):
         "cities": context_cities,
         "connections": context_connections,
     }
+    print(context["connections"])
 
     return JsonResponse(
         context
@@ -43,10 +44,43 @@ def api_reserve(request):
         unique_best_routes = set(best_routes)
         message = []
         for route in unique_best_routes:
+            str_route = ()
+            for conn in route:
+                str_route = (*str_route, str(conn))
             message.append({
-                'route': route,
+                'route': str_route,
                 'count': best_routes.count(route)
             })
+        print(message[0])
         return JsonResponse(
             {'bestRoutes': message},
         )
+
+
+def api_get_channels(request, conn_id):
+    print(conn_id)
+    conn = models.Connection.objects.get(id=conn_id)
+    orange = conn.starting_node.id
+    purple = conn.ending_node.id
+    capacity = conn.provisioned_capacity
+    secondConn = models.Connection.objects.filter(
+        starting_node=conn.ending_node,
+        ending_node=conn.starting_node)[0].id
+    channels = {
+        "12.5": 0,
+        "50.0": 0,
+        "75.0": 0,
+        "112.5": 0
+    }
+    for channel in models.Channel.objects.filter(connection=conn):
+        width = str(channel.width)
+        channels[width] += 1
+
+    return JsonResponse({
+        "orange": orange,
+        "purple": purple,
+        "capacity": capacity,
+        "firstConn": conn_id,
+        "secondConn": secondConn,
+        "channels": channels,
+    })

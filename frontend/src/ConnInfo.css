@@ -1,0 +1,74 @@
+.connInfoContainer {
+    font-family: Arial, sans-serif;
+    color: #333;
+    padding: 20px;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    background-color: #f9f9f9;
+  }
+
+  .capacityContainer {
+    margin-bottom: 15px;
+  }
+
+  .capacityText {
+    font-size: 18px;
+    font-weight: bold;
+  }
+
+  .connGraphicsContainer {
+    display: flex;
+    align-items: center;
+    margin: 10px 0;
+  }
+
+  .circle {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: inline-block;
+    margin: 0 10px;
+  }
+
+  .arrow {
+    font-size: 20px;
+    font-weight: bold;
+    color: #666;
+  }
+
+  .idLabel {
+    font-size: 14px;
+    margin-left: 10px;
+    color: #555;
+  }
+
+  .channelsTitle {
+    margin-top: 20px;
+    font-size: 16px;
+    font-weight: bold;
+  }
+
+  .channelsTable {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 10px;
+  }
+
+  .channelsTable th, .channelsTable td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+  }
+
+  .channelsTable th {
+    background-color: #f4f4f4;
+    font-weight: bold;
+  }
+
+  .channelsTable tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+
+  .channelsTable tr:hover {
+    background-color: #f1f1f1;
+  }

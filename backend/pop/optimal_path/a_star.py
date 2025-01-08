@@ -1,6 +1,8 @@
 from .models import Node, Connection
 from geopy import distance
 
+ONE_CHANNEL_PERCENT = 12.5/4800  # 12.5 GHz compared to 4.8THz (total capacity)
+
 
 def find_best(start_node_id: int, end_node_id: int, space: float) -> list[tuple]:
     start_node: Node = Node.objects.get(id=start_node_id)
@@ -37,18 +39,23 @@ def find_best(start_node_id: int, end_node_id: int, space: float) -> list[tuple]
     paths_to_reserve = []
     space_allocation_counter = 0
     while space > 0:
+        for conn_id in FINAL_PATHS:
+            if used_capacity[conn_id] <= 100 - ONE_CHANNEL_PERCENT:
+                break
+        else:
+            # No possibility of getting to the end node
+            return None, space_allocation_counter
+
         queue = {
             (conn.id,): calculate_q((conn.id,), DIST_TO_END, LENGTHS, used_capacity)
             for conn in Connection.objects.filter(starting_node=start_node)
         }
+
         while True:
             if not queue:
                 return None, space_allocation_counter
             path_to_expand = min(queue, key=queue.get)
             if queue[path_to_expand] == float('inf'):
-                print(not queue)
-                print(queue[path_to_expand] == float('inf'))
-                print(queue[path_to_expand])
                 return None, space_allocation_counter
 
             if path_to_expand[-1] in FINAL_PATHS:
@@ -56,7 +63,7 @@ def find_best(start_node_id: int, end_node_id: int, space: float) -> list[tuple]
                 space -= 12.5
                 space_allocation_counter += 1
                 for path in path_to_expand:
-                    used_capacity[path] += 1.25  # 12.5 GHz is the smallest space to reserve (equals 1.25% of total connection capacity)
+                    used_capacity[path] += ONE_CHANNEL_PERCENT
                 break
 
             del queue[path_to_expand]
@@ -78,7 +85,7 @@ def calculate_q(conns: tuple[int], dist_to_end, lengths, used):
     value = 0
     conn_ids = list(conns)
     for conn_id in conn_ids:
-        if used[conn_id] >= 100:
+        if used[conn_id] > 100 - ONE_CHANNEL_PERCENT:
             value = float('inf')
             return value
         value += lengths[conn_id] + used[conn_id] * used_strength
