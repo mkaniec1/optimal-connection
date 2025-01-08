@@ -22,7 +22,6 @@ def api_connections(request):
         "cities": context_cities,
         "connections": context_connections,
     }
-    print(context["connections"])
 
     return JsonResponse(
         context
@@ -51,14 +50,12 @@ def api_reserve(request):
                 'route': str_route,
                 'count': best_routes.count(route)
             })
-        print(message[0])
         return JsonResponse(
             {'bestRoutes': message},
         )
 
 
 def api_get_channels(request, conn_id):
-    print(conn_id)
     conn = models.Connection.objects.get(id=conn_id)
     orange = conn.starting_node.id
     purple = conn.ending_node.id
