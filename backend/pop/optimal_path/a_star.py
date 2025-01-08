@@ -1,7 +1,7 @@
 from .models import Node, Connection
 from geopy import distance
 
-ONE_CHANNEL_PERCENT = 12.5/4800  # 12.5 GHz compared to 4.8THz (total capacity)
+ONE_CHANNEL_PERCENT = 12.5/4800*100  # 12.5 GHz compared to 4.8THz (total capacity)
 
 
 def find_best(start_node_id: int, end_node_id: int, space: float) -> list[tuple]:
