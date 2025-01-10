@@ -124,6 +124,9 @@ function App() {
         const data = await response.json();
         setBestRoute(data.bestRoutes[0].route);
         setUniqueRoutes(data.bestRoutes);
+
+        setOrangePurpleCities([undefined, undefined]);
+        setConnInfoData({});
       } else {
         const data = await response.json();
         alert(data.error);
@@ -167,32 +170,91 @@ function App() {
           />
         ))}
       </MapContainer>
-      <div style={{width: '25%'}}>
-        <div style={{ textAlign: 'center' }}>
-          <p>From <span style={{color:'green'}}>{startEndPath[0] ? startEndPath[0] : '.......'}</span>
-            &nbsp; to <span style={{color:'red'}}>{startEndPath[1] ? startEndPath[1] : '.......'}</span></p>
-          <p>GHz:  <input ref={inputGHzRef} type='number' style={{width: '50px'}}></input></p>
-          <ReserveSpaceButton onClick={handleReserveSpaceClick} />
+      <div style={{
+        width: '25%',
+        height:'810px',
+        padding: '20px',
+        border: '1px solid #ccc',
+        borderRadius: '8px',
+        backgroundColor: '#f9f9f9',
+        display: 'flex',
+        flexDirection: 'column'}}>
+        {/* From-to section */}
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <p style={{ fontSize: '18px', fontWeight: 'bold', margin: '10px 0' }}>
+            From <span style={{ color: 'green', fontStyle: 'italic', textDecoration: 'underline' }}>
+              {startEndPath[0] ? startEndPath[0] : '.......'}
+            </span>
+            &nbsp; to <span style={{ color: 'red', fontStyle: 'italic', textDecoration: 'underline' }}>
+              {startEndPath[1] ? startEndPath[1] : '.......'}
+            </span>
+          </p>
         </div>
-        <div style={{maxHeight:'500px', overflow:'auto'}}>
+
+        {/* GHz input */}
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+          <p style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>GHz:</p>
+          <input
+            ref={inputGHzRef}
+            type="number"
+            style={{
+              width: '60px',
+              padding: '5px',
+              fontSize: '14px',
+              borderRadius: '4px',
+              border: '1px solid #ccc',
+              boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
+            }}
+          />
+          <div style={{ marginTop: '10px' }}>
+            <ReserveSpaceButton onClick={handleReserveSpaceClick} />
+          </div>
+        </div>
+
+        {/* Scrollable list */}
+        <div
+          style={{
+            maxHeight: '500px',
+            overflowY: 'auto',
+            border: '1px solid #ddd',
+            borderRadius: '6px',
+            padding: '10px',
+            backgroundColor: '#ffffff',
+            boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)',
+          }}
+        >
           {uniqueRoutes.map((uniqueRoute, index) => (
-            <RouteSelector
-            key={index}
-            route={uniqueRoute.route}
-            count={uniqueRoute.count}
-            onClick={() => setBestRoute(uniqueRoute.route)}
-            highlight={uniqueRoute.route === bestRoute}
-            />
+            <div
+              key={index}
+              style={{
+                padding: '10px',
+                marginBottom: '10px',
+                border: `2px solid ${uniqueRoute.route === bestRoute ? 'blue' : '#eee'}`,
+                borderRadius: '6px',
+                backgroundColor: uniqueRoute.route === bestRoute ? '#e8f4ff' : '#f9f9f9',
+                cursor: 'pointer',
+                transition: 'background-color 0.2s ease-in-out, border-color 0.2s ease-in-out',
+              }}
+              onClick={() => setBestRoute(uniqueRoute.route)}
+            >
+              <p style={{ margin: '0', fontWeight: 'bold', fontSize: '14px' }}>
+                Route: {uniqueRoute.route.join(' -> ')}
+              </p>
+              <p style={{ margin: '0', fontSize: '12px', color: '#555' }}>Count: {uniqueRoute.count}</p>
+            </div>
           ))}
         </div>
-        <ConnInfo
-        key={connInfoData.firstConn}
-        capacityPercent={connInfoData.capacity}
-        orangePurpleId={connInfoData.firstConn}
-        purpleOrangeId={connInfoData.secondConn}
-        channels={connInfoData.channels}
+          <div style={{flexGrow:1}}></div>
+        {/* ConnInfo Component */}
+        <ConnInfo style={{marginTop: 'auto'}}
+          key={connInfoData.firstConn}
+          capacityPercent={connInfoData.capacity}
+          orangePurpleId={connInfoData.firstConn}
+          purpleOrangeId={connInfoData.secondConn}
+          channels={connInfoData.channels}
         />
       </div>
+
     </div>
   );
 }
