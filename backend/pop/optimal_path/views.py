@@ -77,7 +77,7 @@ def api_get_channels(request, conn_id):
     return JsonResponse({
         "orange": orange,
         "purple": purple,
-        "capacity": capacity,
+        "capacity": str(float(capacity)),
         "firstConn": conn_id,
         "secondConn": secondConn,
         "channels": channels,

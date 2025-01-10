@@ -77,7 +77,8 @@ function App() {
             if (route === data.firstConn || route === data.secondConn){
               newConnInfo.channels["12.5"] += uniqueRoute.count;
               const capacityIncrease = uniqueRoute.count * 12.5 / 4800 * 100;
-              newConnInfo.capacity = (newConnInfo.capacity + capacityIncrease).toFixed(2);
+              newConnInfo.capacity = newConnInfo.capacity + capacityIncrease;
+              newConnInfo.capacity = parseFloat(newConnInfo.capacity.toFixed(2));
             }
           }
         }
