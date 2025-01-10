@@ -34,7 +34,8 @@ def api_reserve(request):
         start_node = data.get('startNode')
         end_node = data.get('endNode')
         space = float(data.get('space'))
-        best_routes, times_allocated = a_star.find_best(start_node, end_node, space)
+        solver = a_star.AStarOptimalPathSolver()
+        best_routes, times_allocated = solver.solve(start_node, end_node, space)
         if not best_routes:
             return JsonResponse(
                 {'error': f"Maximum number of allocations is {times_allocated}, which is {times_allocated*12.5} GHz."},
