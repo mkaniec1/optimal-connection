@@ -1,4 +1,5 @@
 from optimal_path.models import Node, Connection, Channel
+from django.db.models import Q
 import csv
 
 
@@ -27,11 +28,11 @@ def load_connections():
             provisioned_capacity = row[4]
 
             Connection.objects.create(
-            id=connection_id,
-            starting_node=starting_node,
-            ending_node=ending_node,
-            total_capacity=total_capacity,
-            provisioned_capacity=provisioned_capacity,
+                id=connection_id,
+                starting_node=starting_node,
+                ending_node=ending_node,
+                total_capacity=total_capacity,
+                provisioned_capacity=provisioned_capacity,
             )
 
 
@@ -39,7 +40,6 @@ def load_channels():
     with open("optimal_path/initial_data/spectrum_kanaly.csv", "r") as file:
         reader = csv.reader(file, delimiter=";")
         headers = next(reader)
-        artifact = "-snc::controlPlane"
         for row in reader:
             connection_id = row[0]
             if not row[1] or not row[2] or not row[3]:
@@ -66,7 +66,17 @@ def load_channels():
                 channel=channel,
             )
 
+
 def load_all():
     load_nodes()
     load_connections()
     load_channels()
+    delete_orphan_nodes()
+
+
+def delete_orphan_nodes():
+    orphan_nodes = Node.objects.filter(
+        ~Q(id__in=Connection.objects.values_list('starting_node', flat=True)) &
+        ~Q(id__in=Connection.objects.values_list('ending_node', flat=True))
+    )
+    orphan_nodes.delete()
