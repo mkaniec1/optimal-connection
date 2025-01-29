@@ -43,7 +43,6 @@ def load_channels():
         for row in reader:
             connection_id = row[0]
             if not row[1] or not row[2] or not row[3]:
-                print("no data")
                 continue
             request_free_id = row[1]
             frequency = row[2]
