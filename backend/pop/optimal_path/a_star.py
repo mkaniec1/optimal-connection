@@ -1,11 +1,10 @@
-from time import sleep
 from .models import Node, Connection
 from geopy import distance
 
 
 class AStarOptimalPathSolver():
-    def __init__(self):
-        self.ONE_CHANNEL_PERCENT = 12.5/4800*100  # 12.5 GHz compared to 4.8THz (total capacity)
+    def set_channel_percent(self, channel_size):
+        self.ONE_CHANNEL_PERCENT = channel_size/4800*100
 
     def end_blocked(self):
         for conn_id in self.FINAL_PATHS:
@@ -32,50 +31,52 @@ class AStarOptimalPathSolver():
             return (usage-50)*3
         return self.LENGTHS_SUM
 
-    def add_path_to_reserve(self, path: tuple, reserved_paths: list[tuple]):
-        reserved_paths.append(path)
-        for conn_id in path:
-            self.used_capacity[conn_id] += self.ONE_CHANNEL_PERCENT
+    def translate_to_channel(self, speed):
+        match speed:
+            case 40:
+                return 25
+            case 100:
+                return 50
+            case 200:
+                return 75
+            case 400:
+                return 112.5
+            case _:
+                return None
 
-    def solve(self, start_node_id: int, end_node_id: int, space: float):
+    def solve(self, start_node_id: int, end_node_id: int, speed: int):
         self.load_data(start_node_id, end_node_id)
-        paths_to_reserve: list[tuple] = []
-        space_allocation_counter: int = 0
+        channel_size = self.translate_to_channel(speed)
+        self.set_channel_percent(channel_size)
+        if not channel_size or self.end_blocked():
+            return None
 
-        while space > 0:
-            if self.end_blocked():
-                return None, space_allocation_counter
+        queue = {
+            (conn.id,): self.calculate_q((conn.id,))
+            for conn in self.starting_conns
+        }
 
-            queue = {
-                (conn.id,): self.calculate_q((conn.id,))
-                for conn in self.starting_conns
-            }
+        while True:
+            if not queue:
+                return None
 
-            while True:
-                if not queue:
-                    return None, space_allocation_counter
-                path_to_expand = min(queue, key=queue.get)
+            path_to_expand = min(queue, key=queue.get)
 
-                if queue[path_to_expand] == float('inf'):
-                    return None, space_allocation_counter
+            if queue[path_to_expand] == float('inf'):
+                return None
 
-                if path_to_expand[-1] in self.FINAL_PATHS:
-                    self.add_path_to_reserve(path_to_expand, paths_to_reserve)
-                    space -= 12.5
-                    space_allocation_counter += 1
-                    break
+            if path_to_expand[-1] in self.FINAL_PATHS:
+                return path_to_expand
 
-                del queue[path_to_expand]
+            del queue[path_to_expand]
 
-                new_conns = self.continuations[path_to_expand[-1]]
-                for new_conn in new_conns:
-                    if self.not_repeated(new_conn, path_to_expand):
-                        new_path = (*path_to_expand, new_conn)
-                        new_path_value = self.calculate_q(new_path)
-                        if new_path_value != float('inf'):
-                            queue[new_path] = new_path_value
-
-        return paths_to_reserve, space_allocation_counter
+            new_conns = self.continuations[path_to_expand[-1]]
+            for new_conn in new_conns:
+                if self.not_repeated(new_conn, path_to_expand):
+                    new_path = (*path_to_expand, new_conn)
+                    new_path_value = self.calculate_q(new_path)
+                    if new_path_value != float('inf'):
+                        queue[new_path] = new_path_value
 
     def not_repeated(self, conn, path):
         return conn not in path and self.ANTI_PATHS[conn] not in path

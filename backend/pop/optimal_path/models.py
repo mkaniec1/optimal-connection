@@ -15,7 +15,7 @@ class Connection(models.Model):
 
 class Channel(models.Model):
     connection = models.ForeignKey(Connection, on_delete=models.DO_NOTHING)
-    request_free_id = models.CharField("Request Free Id", max_length=64)
-    frequency = models.DecimalField("Frequency", max_digits=9, decimal_places=6)
+    request_free_id = models.CharField("Request Free Id", max_length=64, null=True)
+    frequency = models.DecimalField("Frequency", max_digits=9, decimal_places=6, null=True)
     width = models.DecimalField("Width", max_digits=4, decimal_places=1)
     channel = models.CharField("Channel name", max_length=5, null=True)

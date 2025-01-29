@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import CityLine from './CityLine';
 import CityMarker from './CityMarker';
-import RouteSelector from './RouteSelector';
 import ReserveSpaceButton from './ReserveSpaceButton';
 import ConnInfo from './ConnInfo';
 import { MapContainer, TileLayer } from 'react-leaflet';
@@ -14,12 +13,11 @@ function App() {
   const [startEndPath, setStartEndPath] = useState([undefined, undefined]);
   const [orangePurpleCities, setOrangePurpleCities] = useState([undefined, undefined]);
   const [pathToModify, setPathToModify] = useState(0);
-  const [bestRoute, setBestRoute] = useState([]);
+  const [bestRoute, setBestRoute] = useState({route: [], channelSize: 0});
   const [map, setMap] = useState(null);
-  const [uniqueRoutes, setUniqueRoutes] = useState([]);
   const [connInfoData, setConnInfoData] = useState({});
+  const [selectedSpeed, setSelectedSpeed] = useState(0);
   const mapRef = useRef();
-  const inputGHzRef = useRef();
 
 
   useEffect(() => {
@@ -72,16 +70,6 @@ function App() {
           secondConn: data.secondConn,
           channels: data.channels,
         };
-        for (const uniqueRoute of uniqueRoutes){
-          for (const route of uniqueRoute.route){
-            if (route === data.firstConn || route === data.secondConn){
-              newConnInfo.channels["12.5"] += uniqueRoute.count;
-              const capacityIncrease = uniqueRoute.count * 12.5 / 4800 * 100;
-              newConnInfo.capacity = newConnInfo.capacity + capacityIncrease;
-              newConnInfo.capacity = parseFloat(newConnInfo.capacity.toFixed(2));
-            }
-          }
-        }
         setConnInfoData(newConnInfo);
       } else {
         console.warn('Invalid response from server');
@@ -100,6 +88,10 @@ function App() {
     setPathToModify(pathToModify === 0 ? 1 : 0);
   };
 
+  const handleSpeedClick = (click) => {
+    setSelectedSpeed(click.target.value);
+  }
+
   const handleReserveSpaceClick = async () => {
     if (startEndPath[0] === startEndPath[1] || !startEndPath[0] || !startEndPath[1]){
       alert('invalid cities!');
@@ -117,21 +109,21 @@ function App() {
         body: JSON.stringify({
           startNode: startEndPath[0],
           endNode: startEndPath[1],
-          space: inputGHzRef.current.value,
+          speed: selectedSpeed,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
-        setBestRoute(data.bestRoutes[0].route);
-        setUniqueRoutes(data.bestRoutes);
+        setBestRoute({
+          route: data.bestRoute,
+          channelSize: data.channelSize});
 
         setOrangePurpleCities([undefined, undefined]);
         setConnInfoData({});
       } else {
         const data = await response.json();
         alert(data.error);
-        console.warn('Invalid response from server');
       }
     } catch (error) {
       console.error('Error requesting reservation: ', error);
@@ -148,12 +140,12 @@ function App() {
         ref={mapRef}
       >
         <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        {connections.map((conn, index) => (
+        {connections.map((conn) => (
           <CityLine
-            key={`${conn.id}-${bestRoute.includes(conn.id)}-${[connInfoData.firstConn, connInfoData.secondConn].includes(conn.id)}`}
+            key={`${conn.id}-${bestRoute.route.includes(conn.id)}-${[connInfoData.firstConn, connInfoData.secondConn].includes(conn.id)}`}
             positions={[cities[conn.starting_node_id], cities[conn.ending_node_id]]}
             onClick={() => handleLineClick(conn)}
-            highlight={bestRoute.includes(conn.id)}
+            highlight={bestRoute.route.includes(conn.id)}
             displayingInfo={
               [connInfoData.firstConn, connInfoData.secondConn].includes(conn.id)
             }
@@ -194,19 +186,20 @@ function App() {
 
         {/* GHz input */}
         <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <p style={{ fontSize: '16px', fontWeight: 'bold', marginBottom: '8px' }}>GHz:</p>
-          <input
-            ref={inputGHzRef}
-            type="number"
-            style={{
-              width: '60px',
-              padding: '5px',
-              fontSize: '14px',
-              borderRadius: '4px',
-              border: '1px solid #ccc',
-              boxShadow: '0px 2px 4px rgba(0, 0, 0, 0.1)',
-            }}
-          />
+        <div style={{ display: 'flex', flexDirection: 'column'}}>
+          <label>
+            <input type="radio" name="speed" value="40" onChange={handleSpeedClick}/> 40 &nbsp;&nbsp;Gb/s
+          </label>
+          <label>
+            <input type="radio" name="speed" value="100" onChange={handleSpeedClick}/> 100 Gb/s
+          </label>
+          <label>
+            <input type="radio" name="speed" value="200" onChange={handleSpeedClick}/> 200 Gb/s
+          </label>
+          <label>
+            <input type="radio" name="speed" value="400" onChange={handleSpeedClick}/> 400 Gb/s
+          </label>
+        </div>
           <div style={{ marginTop: '10px' }}>
             <ReserveSpaceButton onClick={handleReserveSpaceClick} />
           </div>
@@ -224,26 +217,24 @@ function App() {
             boxShadow: '0px 2px 6px rgba(0, 0, 0, 0.1)',
           }}
         >
-          {uniqueRoutes.map((uniqueRoute, index) => (
+          {bestRoute && (
             <div
-              key={index}
               style={{
                 padding: '10px',
                 marginBottom: '10px',
-                border: `2px solid ${uniqueRoute.route === bestRoute ? 'blue' : '#eee'}`,
+                border: '2px solid blue',
                 borderRadius: '6px',
-                backgroundColor: uniqueRoute.route === bestRoute ? '#e8f4ff' : '#f9f9f9',
+                backgroundColor: '#e8f4ff',
                 cursor: 'pointer',
                 transition: 'background-color 0.2s ease-in-out, border-color 0.2s ease-in-out',
               }}
-              onClick={() => setBestRoute(uniqueRoute.route)}
             >
               <p style={{ margin: '0', fontWeight: 'bold', fontSize: '14px' }}>
-                Route: {uniqueRoute.route.join(' -> ')}
+                Route: {bestRoute.route?.join(' -> ')}
               </p>
-              <p style={{ margin: '0', fontSize: '12px', color: '#555' }}>Count: {uniqueRoute.count}</p>
+              <p style={{ margin: '0', fontSize: '12px', color: '#555' }}>Channel: {bestRoute.channelSize} GHz</p>
             </div>
-          ))}
+          )}
         </div>
           <div style={{flexGrow:1}}></div>
         {/* ConnInfo Component */}

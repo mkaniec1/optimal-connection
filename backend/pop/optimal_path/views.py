@@ -1,6 +1,6 @@
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.http import JsonResponse
-from . import models, a_star
+from . import models, a_star, tools
 import json
 
 @ensure_csrf_cookie
@@ -33,26 +33,20 @@ def api_reserve(request):
         data = json.loads(request.body)
         start_node = data.get('startNode')
         end_node = data.get('endNode')
-        space = float(data.get('space'))
+        speed = int(data.get('speed'))
         solver = a_star.AStarOptimalPathSolver()
-        best_routes, times_allocated = solver.solve(start_node, end_node, space)
-        if not best_routes:
+        best_route = solver.solve(start_node, end_node, speed)
+        if not best_route:
             return JsonResponse(
-                {'error': f"Maximum number of allocations is {times_allocated}, which is {times_allocated*12.5} GHz."},
+                {'error': "Choose desired speed!"},
                 status=400
             )
-        unique_best_routes = set(best_routes)
-        message = []
-        for route in unique_best_routes:
-            str_route = ()
-            for conn in route:
-                str_route = (*str_route, str(conn))
-            message.append({
-                'route': str_route,
-                'count': best_routes.count(route)
-            })
+        channel_size = solver.translate_to_channel(speed)
+        tools.add_channel_to_db(best_route, channel_size)
+        best_route = [str(conn) for conn in best_route]
         return JsonResponse(
-            {'bestRoutes': message},
+            {'bestRoute': best_route,
+             'channelSize': channel_size},
         )
 
 
@@ -65,7 +59,7 @@ def api_get_channels(request, conn_id):
         starting_node=conn.ending_node,
         ending_node=conn.starting_node)[0].id
     channels = {
-        "12.5": 0,
+        "25.0": 0,
         "50.0": 0,
         "75.0": 0,
         "112.5": 0

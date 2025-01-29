@@ -1,6 +1,6 @@
 import { Polyline } from 'react-leaflet';
 
-function CityLine({ positions, onClick, highlight, displayingInfo }) {
+function CityLine({ positions, onClick, highlight, displayingInfo}) {
   let color = "blue";
   let weight = 4;
   if (highlight){
